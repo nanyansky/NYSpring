@@ -1,4 +1,4 @@
-package com.nanyna.spring.annotation;
+package com.nanyan.spring.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -11,6 +11,6 @@ import java.lang.annotation.Target;
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface ComponentScan {
+public @interface NYComponentScan {
     String value() default "";
 }

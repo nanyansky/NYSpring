@@ -10,12 +10,8 @@ public class Test {
     public static void main(String[] args) throws Exception {
         NanYanApplicationContext applicationContext = new NanYanApplicationContext(AppConfig.class);
         A a = (A) applicationContext.getBean("a");
-
         System.out.println(a);
-
-//        a.printB();
+        //a.printB();
         a.close();
-
-
     }
 }

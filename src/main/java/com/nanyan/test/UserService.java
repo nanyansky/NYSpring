@@ -24,6 +24,11 @@ public class UserService implements BeanNameAware, InitializingBean {
     public String name;
 
 
+    public void run()
+    {
+        orderService.setName("orderService!");
+        System.out.println(orderService.name);
+    }
 
     public void setName(String name) {
         this.name = name;

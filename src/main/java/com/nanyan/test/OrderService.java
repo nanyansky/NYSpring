@@ -8,4 +8,10 @@ import com.nanyan.spring.annotation.NYComponent;
  */
 @NYComponent
 public class OrderService {
+
+    public String name;
+
+    public void setName(String name) {
+        this.name = name;
+    }
 }

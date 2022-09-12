@@ -13,11 +13,12 @@ public class Test {
         NanYanApplicationContext nanYanApplicationContext = new NanYanApplicationContext(AppConfig.class);
 
         UserService userService = (UserService) nanYanApplicationContext.getBean("userService");
-        System.out.println(userService.orderService);
-        System.out.println(userService.beanName);
-        System.out.println(userService.name);
+//        System.out.println(userService.orderService);
+//        System.out.println(userService.beanName);
+//        System.out.println(userService.name);
 //        System.out.println(nanYanApplicationContext.getBean("userService"));
 
+        userService.run();
 
     }
 }

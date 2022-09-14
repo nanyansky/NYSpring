@@ -8,7 +8,7 @@ import com.nanyan.spring.annotation.NYAutowired;
  * @date 2022/9/11 11:56
  */
 public class Test {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
 
         NanYanApplicationContext nanYanApplicationContext = new NanYanApplicationContext(AppConfig.class);
 
@@ -19,6 +19,7 @@ public class Test {
 //        System.out.println(nanYanApplicationContext.getBean("userService"));
 
         userService.run();
+        userService.close();
 
     }
 }

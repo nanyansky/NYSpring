@@ -14,7 +14,7 @@ import com.nanyan.spring.interfaces.InitializingBean;
 @NYScope("singleton")
 //@NYScope("prototype")
 
-public class UserService implements BeanNameAware, InitializingBean {
+public class UserService implements BeanNameAware, InitializingBean,AutoCloseable {
 
     @NYAutowired
     public OrderService orderService;
@@ -44,4 +44,8 @@ public class UserService implements BeanNameAware, InitializingBean {
         System.out.println("初始化中......");
     }
 
+    @Override
+    public void close() throws Exception {
+        System.out.println("开始销毁...");
+    }
 }

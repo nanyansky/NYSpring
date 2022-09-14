@@ -11,7 +11,6 @@ public class Test {
         NanYanApplicationContext applicationContext = new NanYanApplicationContext(AppConfig.class);
         A a = (A) applicationContext.getBean("a");
         System.out.println(a);
-        //a.printB();
-        a.close();
+        a.printB();
     }
 }

@@ -13,7 +13,7 @@ import java.io.IOException;
  */
 @NYComponent
 //@NYScope("prototype")
-public class A implements AutoCloseable {
+public class A {
 
     @NYAutowired
     public B b;
@@ -29,10 +29,5 @@ public class A implements AutoCloseable {
         b.run();
         b.setBName("I am B!");
         System.out.println(b.Bname);
-    }
-
-    @Override
-    public void close() throws Exception {
-        System.out.println("开始销毁Bean...");
     }
 }

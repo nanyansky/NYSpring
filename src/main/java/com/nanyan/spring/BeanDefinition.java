@@ -7,6 +7,16 @@ package com.nanyan.spring;
 public class BeanDefinition {
     private Class type;
     private String scope;
+    //全类名
+    private String beanClassName;
+
+    public String getBeanClassName() {
+        return beanClassName;
+    }
+
+    public void setBeanClassName(String beanClassName) {
+        this.beanClassName = beanClassName;
+    }
 
     public boolean isSingleton() {
         return "singleton".equals(scope);

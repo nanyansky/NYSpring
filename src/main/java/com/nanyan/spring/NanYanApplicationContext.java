@@ -4,7 +4,9 @@ import com.nanyan.spring.annotation.NYAutowired;
 import com.nanyan.spring.annotation.NYComponent;
 import com.nanyan.spring.annotation.NYComponentScan;
 import com.nanyan.spring.annotation.NYScope;
+import com.nanyan.spring.aop.AdvisedSupport;
 import com.nanyan.spring.aop.AnnotationAwareAspectJAutoProxyCreator;
+import com.nanyan.spring.aop.AopUtils;
 import com.nanyan.spring.interfaces.*;
 import java.beans.Introspector;
 import java.io.File;
@@ -56,11 +58,15 @@ public class NanYanApplicationContext {
      */
     private final Map<String, Object> disposableBeans = new LinkedHashMap<>();
 
-    public NanYanApplicationContext(Class configClass) {
+    public NanYanApplicationContext(Class configClass) throws Exception {
         this.configClass = configClass;
         scan(configClass);
 
+        //初始化AOP配置类
+        AopUtils.instantiationAopConfig(beanDefinitionMap);
+
         registerBeanPostProcessors();
+
 
         preInstantiateSingletons();
     }
@@ -86,6 +92,10 @@ public class NanYanApplicationContext {
             File files = new File(resource.getFile());
             if (files.isDirectory()) {
                 for (File file : files.listFiles()) {
+                    if(file.isDirectory())
+                    {
+
+                    }
                     String filePath = file.getAbsolutePath();
 //                    System.out.println(filePath);
                     if (filePath.endsWith(".class")) {
@@ -111,6 +121,7 @@ public class NanYanApplicationContext {
                                 // 生成 BeanDefinition，解析 单例bean or 多例bean
                                 BeanDefinition beanDefinition = new BeanDefinition();
                                 beanDefinition.setType(cls);
+                                beanDefinition.setBeanClassName(className);
                                 if (cls.isAnnotationPresent(NYScope.class)) {
                                     NYScope scopeAnnotation = cls.getAnnotation(NYScope.class);
                                     //多例
@@ -154,10 +165,9 @@ public class NanYanApplicationContext {
      * @return Object
      */
     private Object createBean(String beanName, BeanDefinition beanDefinition) {
-        Object bean = null;
         try {
             //创建对象
-            bean = createBeanInstance(beanName, beanDefinition);
+            Object bean = createBeanInstance(beanName, beanDefinition);
 
             //若是单例对象，在依赖注入前，须先存入三级缓存
             if (beanDefinition.isSingleton()) {
@@ -173,30 +183,38 @@ public class NanYanApplicationContext {
                         return finalBean;
                     }
                 });
-
                 this.earlySingletonObjects.remove(beanName);
             }
+
+            Object tmpBean = bean;
             //依赖注入
             populateBean(beanName, beanDefinition, bean);
-            //初始化
-            initializeBean(beanName, beanDefinition, bean);
+            //初始化(可能为代理对象)
+            tmpBean = initializeBean(beanName, beanDefinition, bean);
 
-            //注册需要销毁的 Bean Map
+            // 去二级缓存 earlySingletonObjects 中查看有没有当前 bean，
+            // 如果有，说明发生了循环依赖，返回缓存中的 a 对象（可能是代理对象也可能是原始对象，主要看有没有切点匹配到 bean）。
+            if (beanDefinition.isSingleton()) {
+                Object earlySingletonReference = getSingleton(beanName, false);
+                if (earlySingletonReference != null) {
+                    tmpBean = earlySingletonReference;
+                }
+            }
+
+            //注册需要销毁的 Bean Map，原始对象
             registerDisposableBeanIfNecessary(beanName,bean,beanDefinition);
 
+            return tmpBean;
 
         } catch (Throwable e) {
-            e.printStackTrace();
-        } finally {
+            throw new RuntimeException(e);
         }
-        return bean;
     }
 
     //注册需要销毁的 Bean Map
     private void registerDisposableBeanIfNecessary(String beanName, Object bean, BeanDefinition beanDefinition) {
         if (beanDefinition.isSingleton() && DisposableBeanAdapter.hasDestroyMethod(bean, beanDefinition)) {
             this.disposableBeans.put(beanName, new DisposableBeanAdapter(bean, beanName, beanDefinition));
-
         }
     }
 
@@ -206,7 +224,19 @@ public class NanYanApplicationContext {
         Class classType = beanDefinition.getType();
         //使用无参构造器
         Constructor<?> constructor = classType.getDeclaredConstructor();
-        return constructor.newInstance();
+        Object instance = constructor.newInstance();
+
+        //接入AOP
+        for (AdvisedSupport aspect : AopUtils.CONFIGS) {
+            aspect.setTargetClass(classType);
+            aspect.setTarget(instance);
+
+            if (aspect.pointCutMatch()) {
+                instance = AopUtils.createProxy(aspect).getProxy();
+            }
+        }
+
+        return instance;
     }
 
     //get Bean
@@ -225,12 +255,6 @@ public class NanYanApplicationContext {
                     this.earlySingletonObjects.remove(beanName);
                     this.singletonFactories.remove(beanName);
                 }
-
-//                bean = singletonObjects.get(beanName);
-//                if (bean == null) {
-//                    bean = createBean(beanName, beanDefinition);
-//                    singletonObjects.put(beanName, bean);
-//                }
                 return bean;
             } else {
                 return createBean(beanName, beanDefinition);
@@ -263,8 +287,14 @@ public class NanYanApplicationContext {
     }
 
     //依赖注入
-    void populateBean(String beanName, BeanDefinition beanDefinition, Object bean) throws IllegalAccessException, InvocationTargetException {
+    void populateBean(String beanName, BeanDefinition beanDefinition, Object bean) throws Exception {
         Class classType = beanDefinition.getType();
+
+        //判断是否为代理类
+        if(AopUtils.isAopProxy(bean))
+        {
+            bean = AopUtils.getTarget(bean);
+        }
 
         //属性注入
         Field[] fields = classType.getDeclaredFields();
@@ -345,11 +375,12 @@ public class NanYanApplicationContext {
 
     // 将扫描到的单例 bean 创建出来放到单例池中
     private void preInstantiateSingletons() {
-        beanDefinitionMap.forEach((beanName, beanDefinition) -> {
-            if (beanDefinition.isSingleton()) {
+        for (String beanName : beanDefinitionMap.keySet()) {
+            if(beanDefinitionMap.get(beanName).isSingleton())
+            {
                 getBean(beanName);
             }
-        });
+        }
     }
 
     //销毁方法
